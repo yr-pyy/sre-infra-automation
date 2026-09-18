@@ -1,19 +1,55 @@
-# Ansible
+# ==================== Ansible ====================
+# Ansible 执行失败时自动生成的重试文件
 *.retry
-inventory/inventory_local.ini
 
+# 本地/测试用的 Inventory 清单（避免把内网 IP 和测试主机上传）
+inventory/*local*
+inventory/*dev*
+inventory/*test*
+*hosts.local*
+
+# ==================== 编辑器 / IDE ====================
 # Vim / Emacs
 *.swp
 *.swo
 *~
 
+# VS Code
+.vscode/
+
+# JetBrains (PyCharm / IDEA)
+.idea/
+*.iml
+
+# ==================== 操作系统 ====================
 # macOS
 .DS_Store
+._*
 
 # Windows
 Thumbs.db
+Desktop.ini
 
-# Logs and temporary files
+# ==================== 日志与临时文件 ====================
 *.log
 temp/
 tmp/
+.cache/
+
+# ==================== 敏感信息（重要！）====================
+# 环境变量文件（通常包含明文密码、API Key）
+.env
+.env.local
+.env.*.local
+
+# 含密码/密钥/认证的脚本或配置
+*password*
+*secret*
+*auth*
+*.key
+*.pem
+*.p12
+
+# 数据库脚本中可能含明文密码
+*password*.sql
+*secret*.sql
