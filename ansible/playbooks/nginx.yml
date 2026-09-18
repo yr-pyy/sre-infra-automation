@@ -1,38 +1,13 @@
----
-- name: Install and configure Nginx
-  hosts: web
-  become: yes
-  vars:
-    nginx_port: 80
-    nginx_worker_processes: auto
-
+- name: 部署 Nginx到 web服务器
+  hosts: all
   tasks:
-    - name: Install Nginx
+    - name: 安装 nginx
       yum:
         name: nginx
         state: present
 
-    - name: Start and enable Nginx service
+    - name: 启动 nginx并设置开机自启动
       service:
         name: nginx
         state: started
         enabled: yes
-
-    - name: Allow HTTP port in firewall
-      firewalld:
-        port: "{{ nginx_port }}/tcp"
-        permanent: yes
-        immediate: yes
-        state: enabled
-
-    - name: Create a simple index.html
-      copy:
-        content: |
-          <html>
-          <head><title>Ansible Deployed</title></head>
-          <body><h1>Hello from {{ inventory_hostname }}!</h1></body>
-          </html>
-        dest: /usr/share/nginx/html/index.html
-        owner: root
-        group: root
-        mode: '0644'
