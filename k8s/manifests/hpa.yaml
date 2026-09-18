@@ -1,0 +1,46 @@
+# HPA 控制这个 Deployment 的副本数，防止突然流量过多造成卡顿或流量太少造成资源浪费。
+# HPA（水平 Pod 自动扩缩器）是 Kubernetes 中自动调整 Pod 副本数量的控制器
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  namespace: ssim
+  name: yuanrui-hpa
+spec:
+  # 副本数范围
+  maxReplicas: 10
+  minReplicas: 1
+
+  # 扩缩行为配置（重点）
+  behavior:
+    scaleDown:      # 缩容行为
+      policies:     # 缩容策略
+        - periodSeconds: 15     # 每15秒评估一次
+          type: Percent          # 按百分比缩容
+          value: 50              # 每次最多减少50%的Pod
+      stabilizationWindowSeconds: 300  # 缩容稳定窗口300秒
+
+    scaleUp:        # 扩容行为
+      policies:     # 扩容策略
+        - periodSeconds: 15     # 每15秒评估一次，百分比策略：适用于小规模应用
+          value: 100             # 按百分比：增加100%
+          type: Percent          # 百分比类型
+        - periodSeconds: 15     # 每15秒评估一次，固定数量策略：确保快速响应突发流量
+          type: Pods             # 按固定Pod数
+          value: 4               # 每次最多增加4个Pod
+      selectPolicy: Max          # 选择最大值策略
+      stabilizationWindowSeconds: 0  # 扩容稳定窗口0秒
+
+  # 扩缩目标
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: yuanrui-nginx
+
+  # 监控指标
+  metrics:
+    - type: Resource             # 资源类型指标
+      resource:
+        name: cpu                # CPU指标
+        target:
+          type: Utilization      # 目标类型为利用率
+          averageUtilization: 30 # 目标CPU利用率30%
