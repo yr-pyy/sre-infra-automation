@@ -1,0 +1,28 @@
+# 作用：如何找到和访问Nginx
+# Secret 用于存储敏感信息，如密码、OAuth令牌、SSH密钥等。
+# 相比 ConfigMap，Secret 提供更高级别的保护。
+apiVersion: v1
+kind: Service
+metadata:
+  name: yuanrui-nginx
+  namespace: ssim
+spec:
+  ports:
+    # 第一个端口映射 - HTTP
+    - name: http
+      targetPort: 80       # Pod 容器端口（容器内实际监听的端口）
+      port: 80             # Service 端口（集群内访问的端口）
+      nodePort: 35658      # 节点端口（外部访问的端口）
+
+    # 第二个端口映射 - HTTPS
+    - name: https
+      targetPort: 443
+      port: 443
+      nodePort: 35659
+
+  # 标签选择器，决定哪些 Pod 属于这个 Service
+  selector:
+    app: nginx             # 匹配 app=nginx 的 Pod
+    developer: yuanrui     # 匹配 developer=yuanrui 的 Pod
+    type: proxy            # 匹配 type=proxy 的 Pod
+  type: NodePort
