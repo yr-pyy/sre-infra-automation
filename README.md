@@ -1,3 +1,10 @@
+## 💡 技术栈与实战亮点
+
+- **容器化与编排**：熟练掌握 Docker 容器网络配置与数据卷管理；具备 K8s 集群资源调度实战经验，独立编写 Deployment、Service、ConfigMap 及 HPA 自动扩缩容等生产级 YAML 清单。
+- **CI/CD 流水线**：实践 Jenkins 结合 Ansible 的自动化发布流程，理解从代码提交到服务部署的完整 DevOps 闭环。
+- **自动化运维**：具备扎实的 Shell 编程能力，封装系统日常自动化巡检脚本（inspection.sh），提升服务器运维效率。
+- **可观测性体系**：从零搭建 Zabbix 6.x 企业级监控平台，涵盖 LNMP 环境部署、Agent 配置及邮件告警策略落地。
+
 # 🛠️ DevOps & SRE 自动化运维实战知识库
 
 本仓库汇集了我在 **Ansible、Docker、Jenkins、Kubernetes (K8s)、Shell 脚本及 Zabbix 监控** 等领域的实战笔记、配置清单与自动化脚本。
