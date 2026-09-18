@@ -1,0 +1,150 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yuanrui-nginx
+  namespace: ssim
+  labels:
+    creator: yuanrui
+
+# 副本管理
+spec:
+  replicas: 1
+  selector:        # 初始副本数 (会被 HPA 覆盖)
+    matchLabels:   # Pod选择器
+      app: nginx
+      developer: yuanrui
+      type: proxy
+
+# 更新策略：始终保证至少有1个可用Pod
+strategy:
+  type: RollingUpdate    # 滚动更新策略
+  rollingUpdate:
+    maxSurge: 1          # 更新期间最多新增1个Pod
+    maxUnavailable: 0    # 更新期间不允许有不可用Pod
+
+# Pod 标签
+template:
+  metadata:
+    labels:
+      app: nginx
+      developer: yuanrui
+      type: proxy
+
+  spec:
+    volumes:
+    # 1. 共享临时卷 - 配置中转站
+    - name: nginx-config-shared
+      emptyDir: {}
+    # 2. ConfigMap卷 - 配置仓库
+    - name: nginx-config-cm
+      configMap:
+        name: yuanrui-nginx-config
+    # 3. Secret卷 - 安全证书
+    - name: tls-secret
+      secret:
+        secretName: yuanrui-nginx-tls
+    # 4. PVC卷 - 持久存储
+    - name: mypvc
+      persistentVolumeClaim:
+        claimName: yuanrui-pvc
+
+    # 初始化容器
+    initContainers:
+    - name: init-container
+      image: registry.cn-hangzhou.aliyuncs.com/duanpc/busybox:1.28.3
+      imagePullPolicy: IfNotPresent
+      command:
+      - sh
+      - -c
+      - |
+        # 将ConfigMap中的配置文件复制到共享卷
+        cp /config/default.conf /shared/default.conf
+        echo "配置文件已复制到共享卷"
+      volumeMounts:
+      - name: nginx-config-cm
+        mountPath: /config
+        readOnly: true
+      - name: nginx-config-shared
+        mountPath: /shared
+
+    # 主容器
+    containers:
+    - name: nginx
+      image: registry.cn-hangzhou.aliyuncs.com/duanpc/nginx:latest
+      imagePullPolicy: IfNotPresent
+
+      # 安全性配置
+      securityContext:
+        runAsUser: 0
+
+      # 卷挂载
+      volumeMounts:
+      - name: nginx-config-shared
+        mountPath: /etc/nginx/conf.d
+        readOnly: true
+      - name: tls-secret
+        mountPath: /etc/nginx/ssl
+        readOnly: true
+      - name: mypvc
+        mountPath: /data
+
+      # 端口
+      ports:
+      - containerPort: 80
+      - containerPort: 443
+
+      # 环境变量
+      env:
+      - name: USER
+        value: "yuanrui"
+      - name: GENDER
+        value: "male"
+      - name: PLAYER_INITIAL_LIVES
+        valueFrom:
+          configMapKeyRef:
+            name: yuanrui-nginx-config
+            key: player_initial_lives
+      - name: UI_PROPERTIES_FILE_NAME
+        valueFrom:
+          configMapKeyRef:
+            name: yuanrui-nginx-config
+            key: ui_properties_file_name
+
+      # 生命周期管理
+      lifecycle:
+        postStart:
+          exec:
+            command:
+            - sh
+            - -c
+            - 'mkdir -p /yuanrui/ && nginx -t'
+
+      # 资源限制
+      resources:
+        limits:
+          cpu: "10m"
+          memory: "153Mi"
+        requests:
+          cpu: "5m"
+          memory: "100Mi"
+
+      # 健康检查机制
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: 80
+          scheme: HTTP
+        initialDelaySeconds: 10
+        timeoutSeconds: 2
+        periodSeconds: 5
+        successThreshold: 1
+
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 80
+          scheme: HTTP
+        initialDelaySeconds: 30
+        timeoutSeconds: 2
+        periodSeconds: 10
+        failureThreshold: 3
