@@ -1,0 +1,21 @@
+- name: 模版下发差异化配置
+  hosts: all
+  vars:
+    app_name: "我的第一个网站"
+  tasks:
+    - name: 下发首页（每台内容不同）
+      template:
+        src: index.html.j2
+        dest: index.html
+
+    - name: 下发nginx站点配置
+      template:
+        src: /root/site.conf.j2
+        dest: /etc/nginx/conf.d/site.conf
+      notify: 重载nginx
+
+  handlers:
+    - name: 重载nginx
+      service:
+        name: nginx
+        state: reloaded
