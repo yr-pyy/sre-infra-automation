@@ -1,0 +1,19 @@
+# Ansible
+*.retry
+inventory/inventory_local.ini
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Logs and temporary files
+*.log
+temp/
+tmp/
