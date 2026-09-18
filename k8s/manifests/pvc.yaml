@@ -1,0 +1,29 @@
+# 作用：为Nginx提供永久存储
+# 应用原理：PVC是对存储的需求单，PV是满足需求的真实存储，
+# StorageClass是按需制造存储的工厂。
+# 先由用户进行PVC申请，StorageClass看到申请后建造PV进行存储
+
+# 好处：
+# 解耦合：Pod不关心房子在哪，只关心能住
+# 数据持久：Pod退租（删除），房子和数据还在
+# 自动管理：中介（StorageClass）自动处理建房、维护
+# 灵活迁移：Pod换地方，还能找到原来的房子
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: yuanrui-pvc
+  namespace: ssim
+spec:
+  storageClassName: rook-ceph-block
+  # 像裸盘一样块存储，不支持跨节点存储，
+  # 不同节点上的多个pod不能对rook-ceph-block这种storageclass生成的pvc进行读写，
+  # 只支持同一个宿主主机上的pod进行读写
+  volumeMode: Filesystem
+  # 还可以是block，就是裸盘，这种读写效率是最高的，比Filesystem高
+  resources:
+    requests:
+      storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  # rook-ceph-block不支持ReadWriteMany
