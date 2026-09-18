@@ -1,0 +1,53 @@
+# 作用：告诉Nginx如何运行
+# ConfigMap 是 Kubernetes 中用于存储非敏感配置数据的资源对象。
+# 它将配置信息与容器镜像解耦，使应用程序配置可移植。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yuanrui-nginx-config  # 统一使用这个 ConfigMap
+  namespace: ssim
+data:
+  # 键名：default.conf
+  # 值：Nginx 配置文件内容
+  default.conf: |
+    # HTTP 服务器
+    server {
+        listen 80;
+        server_name _;
+
+        # 健康检查端点
+        location = /healthz {
+            # 返回 200 状态码和 "healthy\n" 内容
+            return 200 "healthy\n";
+            # 添加响应头，指定内容类型为纯文本
+            add_header Content-Type text/plain;
+        }
+
+        # 其他请求
+        location / {
+            # 静态文件根目录
+            root /usr/share/nginx/html;
+            # 默认索引文件
+            index index.html index.htm;
+        }
+    }
+
+    # HTTPS 服务器
+    server {
+        # 监听 443 端口，启用 SSL
+        listen 443 ssl;
+        server_name _;
+
+        # SSL 证书配置
+        ssl_certificate /etc/nginx/ssl/tls.crt;
+        ssl_certificate_key /etc/nginx/ssl/tls.key;
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+        }
+    }
+
+  # 游戏相关配置
+  player_initial_lives: "3"
+  ui_properties_file_name: "ui.properties"
