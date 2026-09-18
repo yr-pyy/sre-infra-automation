@@ -1,1 +1,22 @@
+- name: 变量与register演示
+  hosts: webservers
+  vars:
+    app_name: "我的第一个网站"
+    web_port: 80
+  tasks:
+    - name: 打印变量
+      debug:
+        msg: "应用名：{{ app_name }}，端口：{{ web_port }}"
 
+    - name: 查看nginx版本 （版本信息在stderr!）
+      command: nginx -v
+      register: nginx_ver
+      changed_when: false
+
+    - name: 打印register的完整结构
+      debug:
+        var: nginx_ver
+
+    - name: 只打印版本号 （从stderr取）
+      debug:
+        msg: "{{ inventory_hostname }}的版本是：{{ nginx_ver.stderr }}"
