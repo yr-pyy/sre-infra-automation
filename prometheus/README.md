@@ -3,6 +3,7 @@
 本项目旨在 Rocky Linux 环境下，从零搭建一套云原生主流的“采集-存储-可视化”全链路主机监控系统。项目不仅实现了基础指标的实时监控，还配置了基于阈值的告警规则，并解决了实际部署中遇到的端口冲突等工程问题。
 
 ## 📂 项目目录结构
+
 ```text
 prometheus/
 ├── README.md               # 项目说明文档
@@ -23,8 +24,91 @@ Alertmanager (预留)：结合 alert_rules.yml 实现异常状态下的告警推
 
 组件版本：Node Exporter (v1.10.2) / Prometheus (v2.45.0) / Grafana (Latest)
 
-🚀 核心排障记录与工程实践
+🚀 部署实操步骤
+1. 部署 Node Exporter (采集端)
+bash
+# 下载并解压
+curl -LO https://github.com/prometheus/node_exporter/releases/download/v1.10.2/node_exporter-1.10.2.linux-amd64.tar.gz
+tar xzf node_exporter-1.10.2.linux-amd64.tar.gz
+sudo mv node_exporter-1.10.2.linux-amd64/node_exporter /usr/local/bin/
+
+# 创建系统用户并配置 systemd 托管
+sudo useradd --no-create-home --shell /bin/false node_exporter
+sudo tee /etc/systemd/system/node_exporter.service > /dev/null <<'EOF'
+[Unit]
+Description=Prometheus Node Exporter
+After=network.target
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 启动并验证
+sudo systemctl daemon-reload
+sudo systemctl enable --now node_exporter
+curl -s http://localhost:9100/metrics | head -n 5
+2. 部署 Prometheus Server (存储端)
+bash
+# 下载并解压
+curl -LO https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+tar xvf prometheus-2.45.0.linux-amd64.tar.gz
+cd prometheus-2.45.0.linux-amd64
+sudo cp prometheus promtool /usr/local/bin/
+sudo mkdir -p /etc/prometheus /var/lib/prometheus
+sudo cp -r consoles console_libraries /etc/prometheus/
+
+# 创建用户并赋权
+sudo groupadd --system prometheus
+sudo useradd -s /sbin/nologin --system -g prometheus prometheus
+sudo chown -R prometheus:prometheus /etc/prometheus /var/lib/prometheus /usr/local/bin/prometheus /usr/local/bin/promtool
+
+# 配置 systemd 托管
+sudo tee /etc/systemd/system/prometheus.service > /dev/null <<'EOF'
+[Unit]
+Description=Prometheus Monitoring System
+Wants=network-online.target
+After=network-online.target
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus/ \
+  --web.listen-address=0.0.0.0:9091
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable --now prometheus
+3. 部署 Grafana (可视化端)
+bash
+# 配置官方 YUM 源并安装
+sudo tee /etc/yum.repos.d/grafana.repo > /dev/null <<'EOF'
+[grafana]
+name=grafana
+baseurl=https://mirrors.tuna.tsinghua.edu.cn/grafana/yum/rpm
+repo_gpgcheck=0
+enabled=1
+gpgcheck=0
+EOF
+sudo dnf makecache
+sudo dnf install -y grafana
+
+# 启动服务
+sudo systemctl enable --now grafana-server
+🚨 核心排障记录与工程实践
 在实际部署过程中，秉承“不影响现有业务”的原则，解决了以下关键问题：
+
+端口冲突问题：
 
 现象：启动 prometheus.service 失败，状态为 status=1/FAILURE。
 
@@ -34,9 +118,17 @@ Alertmanager (预留)：结合 alert_rules.yml 实现异常状态下的告警推
 
 解决：为保证现有业务不中断，未强杀 Jenkins。通过修改 Prometheus 的 systemd 启动参数，将监听端口平滑迁移至 0.0.0.0:9091。同时修改了 prometheus.yml 里的抓取目标（Target）地址。
 
-后续问题处理：修改后 systemd 依然报错 Start request repeated too quickly，通过执行 systemctl reset-failed prometheus 清空失败计数后，服务成功启动。
+Systemd 熔断保护：
 
-告警规则补充：初次配置 rule_files 时因未创建文件导致校验失败。后补充编写 alert_rules.yml，利用 promtool check config 校验通过后，成功实现了 CPU 使用率 > 80% 持续 5 分钟即触发的告警策略。
+现象：修改端口后，systemd 依然报错 Start request repeated too quickly。
+
+解决：通过执行 systemctl reset-failed prometheus 清空失败计数后，服务成功启动。
+
+告警规则配置缺失：
+
+现象：初次配置 rule_files 时因未创建文件导致 promtool check config 校验失败。
+
+解决：补充编写 alert_rules.yml，利用 promtool check config 校验通过后，成功实现了 CPU 使用率 > 80% 持续 5 分钟即触发的告警策略。
 
 🖼️ 成果展示
 通过部署 Grafana 并导入社区面板 (ID: 11074)，实现了主机底层资源的多维度可视化监控：
