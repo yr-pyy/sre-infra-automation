@@ -1,0 +1,12 @@
+groups:
+  - name: basic_server_alerts
+    rules:
+      - alert: HighCpuUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          env: dev
+        annotations:
+          summary: "主机 CPU 使用率过高 (实例 {{ $labels.instance }})"
+          description: "CPU 使用率已超过 80%，当前值为 {{ $value }}%。"
